@@ -1,20 +1,22 @@
 export async function extractTextFromPDF(buffer: Buffer): Promise<string> {
-  try {
-    // Polyfill DOMMatrix for Vercel Node.js runtime to prevent pdf.js crash
-    if (typeof global.DOMMatrix === 'undefined') {
-      ;(global as any).DOMMatrix = class DOMMatrix {}
-    }
+  return new Promise((resolve, reject) => {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const PDFParser = require("pdf2json")
+      const pdfParser = new PDFParser(null, 1)
 
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const pdfParse = require('pdf-parse')
-    const parse = pdfParse.default || pdfParse
-    const data = await parse(buffer)
-    return data.text as string
-  } catch (error) {
-    const msg = error instanceof Error ? error.message : 'Unknown error'
-    if (msg.toLowerCase().includes('password')) {
-      throw new Error('PASSWORD_PROTECTED: This PDF is password-protected. Please remove the password and re-upload.')
+      pdfParser.on("pdfParser_dataError", (errData: any) => {
+        const msg = errData?.parserError?.message || 'Unknown error'
+        reject(new Error(`PDF_PARSE_ERROR: ${msg}`))
+      })
+
+      pdfParser.on("pdfParser_dataReady", () => {
+        resolve(pdfParser.getRawTextContent())
+      })
+
+      pdfParser.parseBuffer(buffer)
+    } catch (err) {
+      reject(err)
     }
-    throw new Error(`PDF_PARSE_ERROR: ${msg}`)
-  }
+  })
 }
