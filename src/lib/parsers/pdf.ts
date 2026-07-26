@@ -1,5 +1,10 @@
 export async function extractTextFromPDF(buffer: Buffer): Promise<string> {
   try {
+    // Polyfill DOMMatrix for Vercel Node.js runtime to prevent pdf.js crash
+    if (typeof global.DOMMatrix === 'undefined') {
+      ;(global as any).DOMMatrix = class DOMMatrix {}
+    }
+
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const pdfParse = require('pdf-parse')
     const parse = pdfParse.default || pdfParse
