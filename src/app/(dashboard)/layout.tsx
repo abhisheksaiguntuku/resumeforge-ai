@@ -28,7 +28,7 @@ export default async function DashboardLayout({
     { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
     { name: "Career Profile", href: "/profile", icon: User },
     { name: "Upload Resumes", href: "/profile/upload", icon: Upload },
-    { name: "Job Descriptions", href: "/jobs", icon: Briefcase },
+    { name: "Add Job", href: "/jobs/new", icon: Briefcase },
     { name: "My Resumes", href: "/resumes", icon: FileText },
     { name: "Templates", href: "/templates", icon: Layout },
     { name: "Settings", href: "/settings", icon: Settings },
