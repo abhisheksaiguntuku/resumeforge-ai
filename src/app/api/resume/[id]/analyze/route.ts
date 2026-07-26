@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+
+export const dynamic = 'force-dynamic'
 // import { analyzeResume } from '@/lib/ai/analyze' // Assuming this exists or mocking for now
 
 // Mock analyzeResume for completeness if it's not defined yet
