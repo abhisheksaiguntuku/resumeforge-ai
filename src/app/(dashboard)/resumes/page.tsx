@@ -9,12 +9,24 @@ export default function ResumesPage() {
   const [search, setSearch] = useState('')
 
   useEffect(() => {
-    // Mock fetch, replace with real API later
-    setResumes([
-      { id: '1', name: 'Software Engineer', targetJob: 'Frontend Developer', company: 'Google', templateId: 'modern_minimal', score: 85, updatedAt: new Date().toISOString() },
-      { id: '2', name: 'Product Manager', targetJob: 'PM', company: 'Meta', templateId: 'classic_ats', score: 92, updatedAt: new Date().toISOString() },
-    ])
-    setLoading(false)
+    fetch('/api/resume')
+      .then(res => res.json())
+      .then(data => {
+        if (data.resumes) {
+          const mapped = data.resumes.map((r: any) => ({
+            id: r.id,
+            name: r.name || 'Untitled Resume',
+            targetJob: r.jobDescription?.title || 'General',
+            company: r.jobDescription?.company || '',
+            templateId: r.templateId || 'Standard',
+            score: 0, 
+            updatedAt: r.updatedAt
+          }))
+          setResumes(mapped)
+        }
+      })
+      .catch(console.error)
+      .finally(() => setLoading(false))
   }, [])
 
   const filteredResumes = resumes.filter(r => 
