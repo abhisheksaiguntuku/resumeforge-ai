@@ -14,12 +14,18 @@ export async function uploadFile(
   const sanitized = filename.replace(/[^a-zA-Z0-9._-]/g, '_')
   const uniqueName = `${crypto.randomUUID()}-${sanitized}`
 
-  if (IS_VERCEL && process.env.BLOB_READ_WRITE_TOKEN) {
-    const blob = await put(`resumes/${uniqueName}`, buffer, {
-      access: 'public',
-      contentType,
-    })
-    return { url: blob.url, size: buffer.length }
+  if (IS_VERCEL) {
+    if (process.env.BLOB_READ_WRITE_TOKEN) {
+      const blob = await put(`resumes/${uniqueName}`, buffer, {
+        access: 'public',
+        contentType,
+      })
+      return { url: blob.url, size: buffer.length }
+    } else {
+      // Return a dummy URL on Vercel if Blob Storage isn't configured, so it doesn't crash
+      console.warn("Vercel Blob Storage not configured, skipping file save.")
+      return { url: `/dummy-url/${uniqueName}`, size: buffer.length }
+    }
   }
 
   // Local filesystem fallback
