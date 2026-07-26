@@ -27,16 +27,32 @@ export default function CareerProfilePage() {
     }
   }
 
+  const calculateCompletion = (p: any) => {
+    if (!p) return 0
+    let score = 0
+    if (p.fullName) score += 10
+    if (p.email) score += 10
+    if (p.phone) score += 5
+    if (p.summary) score += 10
+    if (p.education?.length > 0) score += 15
+    if (p.experience?.length > 0) score += 20
+    if (p.skills?.length >= 5) score += 15
+    if (p.projects?.length > 0) score += 15
+    return Math.min(score, 100)
+  }
+
   if (loading) return <div className="p-8">Loading profile...</div>
   if (error) return <div className="p-8 text-red-500">Error: {error}</div>
   if (!profile) return <div className="p-8">No profile found</div>
+
+  const completionScore = calculateCompletion(profile)
 
   return (
     <div className="max-w-6xl mx-auto p-6">
       <div className="flex justify-between items-center mb-8">
         <div>
           <h1 className="text-3xl font-bold">Career Profile</h1>
-          <div className="text-sm text-gray-500 mt-1">Profile Completion: 85%</div>
+          <div className="text-sm text-gray-500 mt-1">Profile Completion: {completionScore}%</div>
         </div>
         <button className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">Export Profile</button>
       </div>
