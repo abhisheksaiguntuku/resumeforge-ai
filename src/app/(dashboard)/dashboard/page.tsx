@@ -7,35 +7,78 @@ import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
 import { AlertCircle, FileText, Upload, User, Briefcase, Plus, MoreHorizontal } from "lucide-react"
 
-async function getDashboardData() {
-  const res = await fetch("http://localhost:3000/api/dashboard", {
-    cache: "no-store",
-    // We'd typically use headers() here to pass cookies/session for the server-side fetch
-  })
-  if (!res.ok) {
-    // Return some mock data if API is not fully up or reachable during build
+import { prisma } from "@/lib/prisma"
+
+async function getDashboardData(userId: string) {
+  try {
+    const [profile, uploadedResumes, resumeVersions, jobDescriptions] = await Promise.all([
+      prisma.careerProfile.findUnique({
+        where: { userId },
+        include: {
+          education: true,
+          experience: true,
+          skills: true,
+          projects: true,
+          conflictItems: { where: { isResolved: false } },
+        },
+      }),
+      prisma.uploadedResume.count({ where: { userId } }),
+      prisma.resumeVersion.findMany({
+        where: { userId },
+        orderBy: { updatedAt: 'desc' },
+        take: 10,
+        include: { jobDescription: true },
+      }),
+      prisma.jobDescription.count({ where: { userId } }),
+    ])
+
+    const calculateCompletion = (p: any) => {
+      let score = 0
+      if (p.fullName) score += 10
+      if (p.email) score += 10
+      if (p.phone) score += 5
+      if (p.summary) score += 10
+      if (p.education?.length > 0) score += 15
+      if (p.experience?.length > 0) score += 20
+      if (p.skills?.length >= 5) score += 15
+      if (p.projects?.length > 0) score += 15
+      return Math.min(score, 100)
+    }
+
     return {
-      completionScore: 65,
-      uploadedResumesCount: 2,
-      resumeVersionsCount: 5,
-      jobDescriptionsCount: 3,
-      unresolvedConflicts: 1,
-      recentResumes: [
-        { id: "1", name: "Software Engineer at Google", company: "Google", template: "Modern", updatedAt: new Date().toISOString() },
-        { id: "2", name: "Frontend Developer", company: "Meta", template: "Classic", updatedAt: new Date().toISOString() },
-      ]
+      completionScore: profile ? calculateCompletion(profile) : 0,
+      uploadedResumesCount: uploadedResumes,
+      resumeVersionsCount: resumeVersions.length,
+      jobDescriptionsCount: jobDescriptions,
+      unresolvedConflicts: profile?.conflictItems?.length || 0,
+      recentResumes: resumeVersions.map((r: any) => ({
+        id: r.id,
+        name: r.name || 'Untitled Resume',
+        company: r.jobDescription?.company || '',
+        template: r.templateId || 'Standard',
+        updatedAt: r.updatedAt
+      }))
+    }
+  } catch (error) {
+    console.error("Dashboard DB Error:", error)
+    return {
+      completionScore: 0,
+      uploadedResumesCount: 0,
+      resumeVersionsCount: 0,
+      jobDescriptionsCount: 0,
+      unresolvedConflicts: 0,
+      recentResumes: []
     }
   }
-  return res.json()
 }
 
 export default async function DashboardPage() {
   const session = await auth()
-  if (!session?.user) {
+  if (!session?.user?.id) {
     redirect("/login")
   }
 
-  const data = await getDashboardData()
+  const data = await getDashboardData(session.user.id)
 
   return (
     <div className="space-y-6">

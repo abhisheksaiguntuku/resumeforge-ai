@@ -13,7 +13,7 @@ const nextConfig: NextConfig = {
         headers: [
           {
             key: 'Clear-Site-Data',
-            value: '"cache", "storage", "executionContexts"',
+            value: '"cache", "storage"',
           },
         ],
       },
