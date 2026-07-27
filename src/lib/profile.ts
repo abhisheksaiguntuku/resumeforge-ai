@@ -34,16 +34,27 @@ export async function applyExtractionToProfile(resumeId: string, userId: string)
     await prisma.careerProfile.update({ where: { id: profile.id }, data: updates })
   }
 
+  // Fetch existing entities into memory for robust fuzzy matching
+  const existingEdus = await prisma.education.findMany({ where: { careerProfileId: profile.id } })
+  const existingExps = await prisma.experience.findMany({ where: { careerProfileId: profile.id } })
+  const existingProjs = await prisma.project.findMany({ where: { careerProfileId: profile.id } })
+
+  const normalize = (s: string) => s.replace(/\s+/g, '').toLowerCase()
+
   // Add education entries
   const education = data.education as Array<Record<string, unknown>> | undefined
   if (education?.length) {
     for (const edu of education) {
-      const instName = (edu.institution as string) || 'Unknown'
-      const matchKey = instName.substring(0, 10)
+      let instName = (edu.institution as string) || 'Unknown'
       
-      const existing = await prisma.education.findFirst({
-        where: { careerProfileId: profile.id, institution: { contains: matchKey, mode: 'insensitive' } }
-      })
+      // Fix bad PDF parsing like "N a r a y a n a" by checking if it's mostly single characters
+      if (instName.match(/^([a-zA-Z]\s){4,}[a-zA-Z]$/)) {
+        instName = instName.replace(/\s+/g, '')
+      }
+
+      const normName = normalize(instName).substring(0, 15)
+      
+      const existing = existingEdus.find(e => normalize(e.institution).includes(normName))
 
       if (existing) {
         if (!existing.sourceResumeIds.includes(resumeId)) {
@@ -51,9 +62,10 @@ export async function applyExtractionToProfile(resumeId: string, userId: string)
             where: { id: existing.id },
             data: { sourceResumeIds: { push: resumeId } }
           })
+          existing.sourceResumeIds.push(resumeId)
         }
       } else {
-        await prisma.education.create({
+        const newEdu = await prisma.education.create({
           data: {
             careerProfileId: profile.id,
             institution: instName,
@@ -68,6 +80,7 @@ export async function applyExtractionToProfile(resumeId: string, userId: string)
             verificationStatus: 'EXTRACTED',
           },
         })
+        existingEdus.push(newEdu)
       }
     }
   }
@@ -108,12 +121,15 @@ export async function applyExtractionToProfile(resumeId: string, userId: string)
   const experience = data.experience as Array<Record<string, unknown>> | undefined
   if (experience?.length) {
     for (const exp of experience) {
-      const compName = (exp.company as string) || 'Unknown'
-      const matchKey = compName.substring(0, 10)
+      let compName = (exp.company as string) || 'Unknown'
       
-      const existing = await prisma.experience.findFirst({
-        where: { careerProfileId: profile.id, company: { contains: matchKey, mode: 'insensitive' } }
-      })
+      if (compName.match(/^([a-zA-Z]\s){4,}[a-zA-Z]$/)) {
+        compName = compName.replace(/\s+/g, '')
+      }
+
+      const normName = normalize(compName).substring(0, 15)
+      
+      const existing = existingExps.find(e => normalize(e.company).includes(normName))
 
       if (existing) {
         if (!existing.sourceResumeIds.includes(resumeId)) {
@@ -121,9 +137,10 @@ export async function applyExtractionToProfile(resumeId: string, userId: string)
             where: { id: existing.id },
             data: { sourceResumeIds: { push: resumeId } }
           })
+          existing.sourceResumeIds.push(resumeId)
         }
       } else {
-        await prisma.experience.create({
+        const newExp = await prisma.experience.create({
           data: {
             careerProfileId: profile.id,
             company: compName,
@@ -139,6 +156,7 @@ export async function applyExtractionToProfile(resumeId: string, userId: string)
             verificationStatus: 'EXTRACTED',
           },
         })
+        existingExps.push(newExp)
       }
     }
   }
@@ -147,12 +165,15 @@ export async function applyExtractionToProfile(resumeId: string, userId: string)
   const projects = data.projects as Array<Record<string, unknown>> | undefined
   if (projects?.length) {
     for (const proj of projects) {
-      const projName = (proj.name as string) || 'Unknown'
-      const matchKey = projName.substring(0, 10)
+      let projName = (proj.name as string) || 'Unknown'
       
-      const existing = await prisma.project.findFirst({
-        where: { careerProfileId: profile.id, name: { contains: matchKey, mode: 'insensitive' } }
-      })
+      if (projName.match(/^([a-zA-Z]\s){4,}[a-zA-Z]$/)) {
+        projName = projName.replace(/\s+/g, '')
+      }
+
+      const normName = normalize(projName).substring(0, 15)
+      
+      const existing = existingProjs.find(e => normalize(e.name).includes(normName))
 
       if (existing) {
         if (!existing.sourceResumeIds.includes(resumeId)) {
@@ -160,9 +181,10 @@ export async function applyExtractionToProfile(resumeId: string, userId: string)
             where: { id: existing.id },
             data: { sourceResumeIds: { push: resumeId } }
           })
+          existing.sourceResumeIds.push(resumeId)
         }
       } else {
-        await prisma.project.create({
+        const newProj = await prisma.project.create({
           data: {
             careerProfileId: profile.id,
             name: projName,
@@ -175,6 +197,7 @@ export async function applyExtractionToProfile(resumeId: string, userId: string)
             verificationStatus: 'EXTRACTED',
           },
         })
+        existingProjs.push(newProj)
       }
     }
   }
