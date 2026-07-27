@@ -27,6 +27,24 @@ export default function CareerProfilePage() {
     }
   }
 
+  const handleDelete = async (id: string, type: string) => {
+    if (!confirm('Are you sure you want to delete this?')) return
+    try {
+      const res = await fetch(`/api/profile/entity?id=${id}&type=${type}`, { method: 'DELETE' })
+      if (res.ok) {
+        // Optimistically remove from state
+        setProfile((prev: any) => ({
+          ...prev,
+          [type === 'skill' ? 'skills' : type]: prev[type === 'skill' ? 'skills' : type].filter((item: any) => item.id !== id)
+        }))
+      } else {
+        alert('Failed to delete')
+      }
+    } catch (err) {
+      alert('Error deleting item')
+    }
+  }
+
   const calculateCompletion = (p: any) => {
     if (!p) return 0
     let score = 0
@@ -79,10 +97,10 @@ export default function CareerProfilePage() {
             transition={{ duration: 0.2 }}
           >
             {activeTab === 'Personal' && <PersonalTab profile={profile} />}
-            {activeTab === 'Education' && <EducationTab profile={profile} />}
-            {activeTab === 'Experience' && <ExperienceTab profile={profile} />}
-            {activeTab === 'Projects' && <ProjectsTab profile={profile} />}
-            {activeTab === 'Skills' && <SkillsTab profile={profile} />}
+            {activeTab === 'Education' && <EducationTab profile={profile} onDelete={handleDelete} />}
+            {activeTab === 'Experience' && <ExperienceTab profile={profile} onDelete={handleDelete} />}
+            {activeTab === 'Projects' && <ProjectsTab profile={profile} onDelete={handleDelete} />}
+            {activeTab === 'Skills' && <SkillsTab profile={profile} onDelete={handleDelete} />}
             {!['Personal', 'Education', 'Experience', 'Projects', 'Skills'].includes(activeTab) && (
               <div className="p-4 bg-gray-50 rounded-lg">Content for {activeTab} coming soon.</div>
             )}
@@ -120,25 +138,25 @@ function PersonalTab({ profile }: { profile: any }) {
   )
 }
 
-function EducationTab({ profile }: { profile: any }) {
+function EducationTab({ profile, onDelete }: { profile: any, onDelete: (id: string, type: string) => void }) {
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-semibold">Education</h2>
-        <button className="bg-green-600 text-white px-3 py-1 rounded-md text-sm">Add New</button>
+        <button className="bg-green-600 text-white px-3 py-1 rounded-md text-sm hover:bg-green-700">Add New</button>
       </div>
       <div className="space-y-4">
         {profile.education?.map((edu: any) => (
-          <div key={edu.id} className="p-4 border rounded-lg flex justify-between items-start">
+          <div key={edu.id} className="p-4 border rounded-lg flex justify-between items-start hover:shadow-sm transition-shadow">
             <div>
-              <div className="font-semibold">{edu.institution} <span className="text-xs ml-2 bg-green-100 text-green-800 px-2 py-1 rounded-full">Verified ✓</span></div>
+              <div className="font-semibold">{edu.institution} {edu.verificationStatus === 'EXTRACTED' && <span className="text-xs ml-2 bg-green-100 text-green-800 px-2 py-1 rounded-full">Verified ✓</span>}</div>
               <div className="text-gray-600">{edu.degree} in {edu.fieldOfStudy}</div>
               <div className="text-sm text-gray-500">{edu.startDate} - {edu.isCurrent ? 'Present' : edu.endDate}</div>
               {edu.cgpa && <div className="text-sm text-gray-500">CGPA: {edu.cgpa}</div>}
             </div>
-            <div className="space-x-2">
-              <button className="text-blue-600 text-sm">Edit</button>
-              <button className="text-red-600 text-sm">Delete</button>
+            <div className="space-x-2 flex">
+              <button className="text-blue-600 hover:text-blue-800 text-sm px-2">Edit</button>
+              <button onClick={() => onDelete(edu.id, 'education')} className="text-red-600 hover:text-red-800 text-sm px-2">Delete</button>
             </div>
           </div>
         ))}
@@ -148,26 +166,26 @@ function EducationTab({ profile }: { profile: any }) {
   )
 }
 
-function ExperienceTab({ profile }: { profile: any }) {
+function ExperienceTab({ profile, onDelete }: { profile: any, onDelete: (id: string, type: string) => void }) {
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-semibold">Experience</h2>
-        <button className="bg-green-600 text-white px-3 py-1 rounded-md text-sm">Add New</button>
+        <button className="bg-green-600 text-white px-3 py-1 rounded-md text-sm hover:bg-green-700">Add New</button>
       </div>
       <div className="space-y-4">
         {profile.experience?.map((exp: any) => (
-          <div key={exp.id} className="p-4 border rounded-lg flex justify-between items-start">
+          <div key={exp.id} className="p-4 border rounded-lg flex justify-between items-start hover:shadow-sm transition-shadow">
             <div>
-              <div className="font-semibold">{exp.title} at {exp.company}</div>
+              <div className="font-semibold">{exp.jobTitle} at {exp.company} {exp.verificationStatus === 'EXTRACTED' && <span className="text-xs ml-2 bg-green-100 text-green-800 px-2 py-1 rounded-full">Verified ✓</span>}</div>
               <div className="text-sm text-gray-500">{exp.startDate} - {exp.isCurrent ? 'Present' : exp.endDate}</div>
               <ul className="list-disc pl-5 mt-2 text-sm text-gray-700">
-                {exp.bulletPoints?.map((bullet: string, i: number) => <li key={i}>{bullet}</li>)}
+                {exp.bullets?.map((bullet: string, i: number) => <li key={i}>{bullet}</li>)}
               </ul>
             </div>
-            <div className="space-x-2">
-              <button className="text-blue-600 text-sm">Edit</button>
-              <button className="text-red-600 text-sm">Delete</button>
+            <div className="space-x-2 flex">
+              <button className="text-blue-600 hover:text-blue-800 text-sm px-2">Edit</button>
+              <button onClick={() => onDelete(exp.id, 'experience')} className="text-red-600 hover:text-red-800 text-sm px-2">Delete</button>
             </div>
           </div>
         ))}
@@ -177,30 +195,30 @@ function ExperienceTab({ profile }: { profile: any }) {
   )
 }
 
-function ProjectsTab({ profile }: { profile: any }) {
+function ProjectsTab({ profile, onDelete }: { profile: any, onDelete: (id: string, type: string) => void }) {
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-semibold">Projects</h2>
-        <button className="bg-green-600 text-white px-3 py-1 rounded-md text-sm">Add New</button>
+        <button className="bg-green-600 text-white px-3 py-1 rounded-md text-sm hover:bg-green-700">Add New</button>
       </div>
       <div className="space-y-4">
         {profile.projects?.map((proj: any) => (
-          <div key={proj.id} className="p-4 border rounded-lg flex justify-between items-start">
+          <div key={proj.id} className="p-4 border rounded-lg flex justify-between items-start hover:shadow-sm transition-shadow">
             <div>
-              <div className="font-semibold">{proj.name}</div>
+              <div className="font-semibold">{proj.name} {proj.verificationStatus === 'EXTRACTED' && <span className="text-xs ml-2 bg-green-100 text-green-800 px-2 py-1 rounded-full">Verified ✓</span>}</div>
               <div className="flex flex-wrap gap-1 mt-1">
                 {proj.technologies?.map((tech: string, i: number) => (
                   <span key={i} className="text-xs bg-gray-200 px-2 py-1 rounded">{tech}</span>
                 ))}
               </div>
               <ul className="list-disc pl-5 mt-2 text-sm text-gray-700">
-                {proj.bulletPoints?.map((bullet: string, i: number) => <li key={i}>{bullet}</li>)}
+                {proj.bullets?.map((bullet: string, i: number) => <li key={i}>{bullet}</li>)}
               </ul>
             </div>
-            <div className="space-x-2">
-              <button className="text-blue-600 text-sm">Edit</button>
-              <button className="text-red-600 text-sm">Delete</button>
+            <div className="space-x-2 flex">
+              <button className="text-blue-600 hover:text-blue-800 text-sm px-2">Edit</button>
+              <button onClick={() => onDelete(proj.id, 'project')} className="text-red-600 hover:text-red-800 text-sm px-2">Delete</button>
             </div>
           </div>
         ))}
@@ -210,18 +228,18 @@ function ProjectsTab({ profile }: { profile: any }) {
   )
 }
 
-function SkillsTab({ profile }: { profile: any }) {
+function SkillsTab({ profile, onDelete }: { profile: any, onDelete: (id: string, type: string) => void }) {
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-semibold">Skills</h2>
-        <button className="bg-green-600 text-white px-3 py-1 rounded-md text-sm">Add New</button>
+        <button className="bg-green-600 text-white px-3 py-1 rounded-md text-sm hover:bg-green-700">Add New</button>
       </div>
       <div className="flex flex-wrap gap-2">
         {profile.skills?.map((skill: any) => (
-          <div key={skill.id} className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm flex items-center">
+          <div key={skill.id} className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm flex items-center hover:bg-blue-200 transition-colors">
             {skill.name}
-            <button className="ml-2 text-blue-600 hover:text-blue-800">&times;</button>
+            <button onClick={() => onDelete(skill.id, 'skill')} className="ml-2 text-blue-600 hover:text-red-600 font-bold">&times;</button>
           </div>
         ))}
         {(!profile.skills || profile.skills.length === 0) && <p className="text-gray-500">No skills found.</p>}
