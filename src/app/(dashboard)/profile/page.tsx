@@ -7,6 +7,11 @@ export default function CareerProfilePage() {
   const [profile, setProfile] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  
+  // Modal State
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [modalType, setModalType] = useState<'education' | 'experience' | 'project' | 'skill' | null>(null)
+  const [editingItem, setEditingItem] = useState<any>(null)
 
   const tabs = ['Personal', 'Education', 'Experience', 'Internships', 'Projects', 'Skills', 'Certifications', 'Achievements', 'Other']
 
@@ -43,6 +48,34 @@ export default function CareerProfilePage() {
     } catch (err) {
       alert('Error deleting item')
     }
+  }
+
+  const handleSave = async (data: any) => {
+    if (!modalType) return
+    const method = editingItem ? 'PATCH' : 'POST'
+    const body = editingItem ? { id: editingItem.id, type: modalType, data } : { type: modalType, data }
+    
+    try {
+      const res = await fetch('/api/profile/entity', {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      })
+      if (res.ok) {
+        setIsModalOpen(false)
+        fetchProfile() // Refresh to get the clean DB data
+      } else {
+        alert('Failed to save')
+      }
+    } catch (err) {
+      alert('Error saving data')
+    }
+  }
+
+  const openModal = (type: 'education' | 'experience' | 'project' | 'skill', item?: any) => {
+    setModalType(type)
+    setEditingItem(item || null)
+    setIsModalOpen(true)
   }
 
   const calculateCompletion = (p: any) => {
@@ -97,16 +130,33 @@ export default function CareerProfilePage() {
             transition={{ duration: 0.2 }}
           >
             {activeTab === 'Personal' && <PersonalTab profile={profile} />}
-            {activeTab === 'Education' && <EducationTab profile={profile} onDelete={handleDelete} />}
-            {activeTab === 'Experience' && <ExperienceTab profile={profile} onDelete={handleDelete} />}
-            {activeTab === 'Projects' && <ProjectsTab profile={profile} onDelete={handleDelete} />}
-            {activeTab === 'Skills' && <SkillsTab profile={profile} onDelete={handleDelete} />}
+            {activeTab === 'Education' && <EducationTab profile={profile} onDelete={handleDelete} onOpenModal={openModal} />}
+            {activeTab === 'Experience' && <ExperienceTab profile={profile} onDelete={handleDelete} onOpenModal={openModal} />}
+            {activeTab === 'Projects' && <ProjectsTab profile={profile} onDelete={handleDelete} onOpenModal={openModal} />}
+            {activeTab === 'Skills' && <SkillsTab profile={profile} onDelete={handleDelete} onOpenModal={openModal} />}
             {!['Personal', 'Education', 'Experience', 'Projects', 'Skills'].includes(activeTab) && (
               <div className="p-4 bg-gray-50 rounded-lg">Content for {activeTab} coming soon.</div>
             )}
           </motion.div>
         </AnimatePresence>
       </div>
+
+      {isModalOpen && modalType && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center p-6 border-b">
+              <h2 className="text-xl font-bold">{editingItem ? 'Edit' : 'Add'} {modalType.charAt(0).toUpperCase() + modalType.slice(1)}</h2>
+              <button onClick={() => setIsModalOpen(false)} className="text-gray-500 hover:text-gray-700 text-2xl font-bold">&times;</button>
+            </div>
+            <div className="p-6">
+              {modalType === 'education' && <EducationForm initialData={editingItem} onSave={handleSave} onCancel={() => setIsModalOpen(false)} />}
+              {modalType === 'experience' && <ExperienceForm initialData={editingItem} onSave={handleSave} onCancel={() => setIsModalOpen(false)} />}
+              {modalType === 'project' && <ProjectForm initialData={editingItem} onSave={handleSave} onCancel={() => setIsModalOpen(false)} />}
+              {modalType === 'skill' && <SkillForm initialData={editingItem} onSave={handleSave} onCancel={() => setIsModalOpen(false)} />}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -138,12 +188,12 @@ function PersonalTab({ profile }: { profile: any }) {
   )
 }
 
-function EducationTab({ profile, onDelete }: { profile: any, onDelete: (id: string, type: string) => void }) {
+function EducationTab({ profile, onDelete, onOpenModal }: { profile: any, onDelete: (id: string, type: string) => void, onOpenModal: (type: 'education', item?: any) => void }) {
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-semibold">Education</h2>
-        <button className="bg-green-600 text-white px-3 py-1 rounded-md text-sm hover:bg-green-700">Add New</button>
+        <button onClick={() => onOpenModal('education')} className="bg-green-600 text-white px-3 py-1 rounded-md text-sm hover:bg-green-700">Add New</button>
       </div>
       <div className="space-y-4">
         {profile.education?.map((edu: any) => (
@@ -155,7 +205,7 @@ function EducationTab({ profile, onDelete }: { profile: any, onDelete: (id: stri
               {edu.cgpa && <div className="text-sm text-gray-500">CGPA: {edu.cgpa}</div>}
             </div>
             <div className="space-x-2 flex">
-              <button className="text-blue-600 hover:text-blue-800 text-sm px-2">Edit</button>
+              <button onClick={() => onOpenModal('education', edu)} className="text-blue-600 hover:text-blue-800 text-sm px-2">Edit</button>
               <button onClick={() => onDelete(edu.id, 'education')} className="text-red-600 hover:text-red-800 text-sm px-2">Delete</button>
             </div>
           </div>
@@ -166,12 +216,12 @@ function EducationTab({ profile, onDelete }: { profile: any, onDelete: (id: stri
   )
 }
 
-function ExperienceTab({ profile, onDelete }: { profile: any, onDelete: (id: string, type: string) => void }) {
+function ExperienceTab({ profile, onDelete, onOpenModal }: { profile: any, onDelete: (id: string, type: string) => void, onOpenModal: (type: 'experience', item?: any) => void }) {
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-semibold">Experience</h2>
-        <button className="bg-green-600 text-white px-3 py-1 rounded-md text-sm hover:bg-green-700">Add New</button>
+        <button onClick={() => onOpenModal('experience')} className="bg-green-600 text-white px-3 py-1 rounded-md text-sm hover:bg-green-700">Add New</button>
       </div>
       <div className="space-y-4">
         {profile.experience?.map((exp: any) => (
@@ -184,7 +234,7 @@ function ExperienceTab({ profile, onDelete }: { profile: any, onDelete: (id: str
               </ul>
             </div>
             <div className="space-x-2 flex">
-              <button className="text-blue-600 hover:text-blue-800 text-sm px-2">Edit</button>
+              <button onClick={() => onOpenModal('experience', exp)} className="text-blue-600 hover:text-blue-800 text-sm px-2">Edit</button>
               <button onClick={() => onDelete(exp.id, 'experience')} className="text-red-600 hover:text-red-800 text-sm px-2">Delete</button>
             </div>
           </div>
@@ -195,12 +245,12 @@ function ExperienceTab({ profile, onDelete }: { profile: any, onDelete: (id: str
   )
 }
 
-function ProjectsTab({ profile, onDelete }: { profile: any, onDelete: (id: string, type: string) => void }) {
+function ProjectsTab({ profile, onDelete, onOpenModal }: { profile: any, onDelete: (id: string, type: string) => void, onOpenModal: (type: 'project', item?: any) => void }) {
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-semibold">Projects</h2>
-        <button className="bg-green-600 text-white px-3 py-1 rounded-md text-sm hover:bg-green-700">Add New</button>
+        <button onClick={() => onOpenModal('project')} className="bg-green-600 text-white px-3 py-1 rounded-md text-sm hover:bg-green-700">Add New</button>
       </div>
       <div className="space-y-4">
         {profile.projects?.map((proj: any) => (
@@ -217,7 +267,7 @@ function ProjectsTab({ profile, onDelete }: { profile: any, onDelete: (id: strin
               </ul>
             </div>
             <div className="space-x-2 flex">
-              <button className="text-blue-600 hover:text-blue-800 text-sm px-2">Edit</button>
+              <button onClick={() => onOpenModal('project', proj)} className="text-blue-600 hover:text-blue-800 text-sm px-2">Edit</button>
               <button onClick={() => onDelete(proj.id, 'project')} className="text-red-600 hover:text-red-800 text-sm px-2">Delete</button>
             </div>
           </div>
@@ -228,22 +278,122 @@ function ProjectsTab({ profile, onDelete }: { profile: any, onDelete: (id: strin
   )
 }
 
-function SkillsTab({ profile, onDelete }: { profile: any, onDelete: (id: string, type: string) => void }) {
+function SkillsTab({ profile, onDelete, onOpenModal }: { profile: any, onDelete: (id: string, type: string) => void, onOpenModal: (type: 'skill', item?: any) => void }) {
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-semibold">Skills</h2>
-        <button className="bg-green-600 text-white px-3 py-1 rounded-md text-sm hover:bg-green-700">Add New</button>
+        <button onClick={() => onOpenModal('skill')} className="bg-green-600 text-white px-3 py-1 rounded-md text-sm hover:bg-green-700">Add New</button>
       </div>
       <div className="flex flex-wrap gap-2">
         {profile.skills?.map((skill: any) => (
           <div key={skill.id} className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm flex items-center hover:bg-blue-200 transition-colors">
-            {skill.name}
+            <span onClick={() => onOpenModal('skill', skill)} className="cursor-pointer font-medium">{skill.name}</span>
             <button onClick={() => onDelete(skill.id, 'skill')} className="ml-2 text-blue-600 hover:text-red-600 font-bold">&times;</button>
           </div>
         ))}
         {(!profile.skills || profile.skills.length === 0) && <p className="text-gray-500">No skills found.</p>}
       </div>
     </div>
+  )
+}
+
+// --- Form Components ---
+
+function EducationForm({ initialData, onSave, onCancel }: { initialData?: any, onSave: (data: any) => void, onCancel: () => void }) {
+  const [data, setData] = useState(initialData || { institution: '', degree: '', fieldOfStudy: '', startDate: '', endDate: '', isCurrent: false, cgpa: '', location: '' })
+  
+  return (
+    <form onSubmit={(e) => { e.preventDefault(); onSave(data) }} className="space-y-4">
+      <div><label className="block text-sm font-medium">Institution</label><input required className="w-full border rounded p-2" value={data.institution} onChange={e => setData({...data, institution: e.target.value})} /></div>
+      <div className="grid grid-cols-2 gap-4">
+        <div><label className="block text-sm font-medium">Degree</label><input required className="w-full border rounded p-2" value={data.degree} onChange={e => setData({...data, degree: e.target.value})} /></div>
+        <div><label className="block text-sm font-medium">Field of Study</label><input className="w-full border rounded p-2" value={data.fieldOfStudy} onChange={e => setData({...data, fieldOfStudy: e.target.value})} /></div>
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div><label className="block text-sm font-medium">Start Date</label><input required placeholder="e.g. Sep 2020" className="w-full border rounded p-2" value={data.startDate} onChange={e => setData({...data, startDate: e.target.value})} /></div>
+        <div>
+          <label className="block text-sm font-medium">End Date</label>
+          <input disabled={data.isCurrent} placeholder="e.g. May 2024" className="w-full border rounded p-2 disabled:bg-gray-100" value={data.endDate} onChange={e => setData({...data, endDate: e.target.value})} />
+        </div>
+      </div>
+      <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={data.isCurrent} onChange={e => setData({...data, isCurrent: e.target.checked, endDate: ''})} /> I currently study here</label>
+      <div className="flex justify-end gap-2 pt-4">
+        <button type="button" onClick={onCancel} className="px-4 py-2 border rounded">Cancel</button>
+        <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded">Save</button>
+      </div>
+    </form>
+  )
+}
+
+function ExperienceForm({ initialData, onSave, onCancel }: { initialData?: any, onSave: (data: any) => void, onCancel: () => void }) {
+  const [data, setData] = useState(initialData || { company: '', jobTitle: '', startDate: '', endDate: '', isCurrent: false, bullets: [] })
+  
+  return (
+    <form onSubmit={(e) => { e.preventDefault(); onSave(data) }} className="space-y-4">
+      <div className="grid grid-cols-2 gap-4">
+        <div><label className="block text-sm font-medium">Company</label><input required className="w-full border rounded p-2" value={data.company} onChange={e => setData({...data, company: e.target.value})} /></div>
+        <div><label className="block text-sm font-medium">Job Title</label><input required className="w-full border rounded p-2" value={data.jobTitle} onChange={e => setData({...data, jobTitle: e.target.value})} /></div>
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div><label className="block text-sm font-medium">Start Date</label><input required className="w-full border rounded p-2" value={data.startDate} onChange={e => setData({...data, startDate: e.target.value})} /></div>
+        <div><label className="block text-sm font-medium">End Date</label><input disabled={data.isCurrent} className="w-full border rounded p-2 disabled:bg-gray-100" value={data.endDate} onChange={e => setData({...data, endDate: e.target.value})} /></div>
+      </div>
+      <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={data.isCurrent} onChange={e => setData({...data, isCurrent: e.target.checked, endDate: ''})} /> I currently work here</label>
+      <div>
+        <label className="block text-sm font-medium">Responsibilities (Bullet Points)</label>
+        <textarea rows={4} className="w-full border rounded p-2" placeholder="One bullet per line..." value={data.bullets.join('\n')} onChange={e => setData({...data, bullets: e.target.value.split('\n').filter(Boolean)})} />
+      </div>
+      <div className="flex justify-end gap-2 pt-4">
+        <button type="button" onClick={onCancel} className="px-4 py-2 border rounded">Cancel</button>
+        <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded">Save</button>
+      </div>
+    </form>
+  )
+}
+
+function ProjectForm({ initialData, onSave, onCancel }: { initialData?: any, onSave: (data: any) => void, onCancel: () => void }) {
+  const [data, setData] = useState(initialData || { name: '', description: '', technologies: [], bullets: [] })
+  return (
+    <form onSubmit={(e) => { e.preventDefault(); onSave(data) }} className="space-y-4">
+      <div><label className="block text-sm font-medium">Project Name</label><input required className="w-full border rounded p-2" value={data.name} onChange={e => setData({...data, name: e.target.value})} /></div>
+      <div>
+        <label className="block text-sm font-medium">Technologies (comma separated)</label>
+        <input className="w-full border rounded p-2" value={data.technologies.join(', ')} onChange={e => setData({...data, technologies: e.target.value.split(',').map(s => s.trim()).filter(Boolean)})} />
+      </div>
+      <div>
+        <label className="block text-sm font-medium">Key Features (Bullet Points)</label>
+        <textarea rows={4} className="w-full border rounded p-2" placeholder="One bullet per line..." value={data.bullets.join('\n')} onChange={e => setData({...data, bullets: e.target.value.split('\n').filter(Boolean)})} />
+      </div>
+      <div className="flex justify-end gap-2 pt-4">
+        <button type="button" onClick={onCancel} className="px-4 py-2 border rounded">Cancel</button>
+        <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded">Save</button>
+      </div>
+    </form>
+  )
+}
+
+function SkillForm({ initialData, onSave, onCancel }: { initialData?: any, onSave: (data: any) => void, onCancel: () => void }) {
+  const [data, setData] = useState(initialData || { name: '', category: 'PROGRAMMING_LANGUAGES' })
+  return (
+    <form onSubmit={(e) => { e.preventDefault(); onSave(data) }} className="space-y-4">
+      <div><label className="block text-sm font-medium">Skill Name</label><input required className="w-full border rounded p-2" value={data.name} onChange={e => setData({...data, name: e.target.value})} /></div>
+      <div>
+        <label className="block text-sm font-medium">Category</label>
+        <select className="w-full border rounded p-2" value={data.category} onChange={e => setData({...data, category: e.target.value})}>
+          <option value="PROGRAMMING_LANGUAGES">Programming Languages</option>
+          <option value="FRAMEWORKS">Frameworks</option>
+          <option value="DATABASES">Databases</option>
+          <option value="CLOUD">Cloud</option>
+          <option value="DEV_TOOLS">Dev Tools</option>
+          <option value="SOFT_SKILLS">Soft Skills</option>
+          <option value="OTHER">Other</option>
+        </select>
+      </div>
+      <div className="flex justify-end gap-2 pt-4">
+        <button type="button" onClick={onCancel} className="px-4 py-2 border rounded">Cancel</button>
+        <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded">Save</button>
+      </div>
+    </form>
   )
 }
