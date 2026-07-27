@@ -6,6 +6,7 @@ import { uploadFile } from '@/lib/storage'
 import { extractTextFromPDF } from '@/lib/parsers/pdf'
 import { extractTextFromDOCX } from '@/lib/parsers/docx'
 import { extractResumeData } from '@/lib/ai/extract'
+import { applyExtractionToProfile } from '@/lib/profile'
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
 const MAX_RESUMES = 10
@@ -86,6 +87,14 @@ export async function POST(req: NextRequest) {
         extractionStatus: extractedData ? 'COMPLETED' : 'FAILED',
       },
     })
+
+    if (extractedData) {
+      try {
+        await applyExtractionToProfile(resume.id, userId)
+      } catch (err) {
+        console.error('Auto-merge failed:', err)
+      }
+    }
 
     return NextResponse.json({
       success: true,
