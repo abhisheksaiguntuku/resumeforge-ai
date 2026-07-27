@@ -38,21 +38,37 @@ export async function applyExtractionToProfile(resumeId: string, userId: string)
   const education = data.education as Array<Record<string, unknown>> | undefined
   if (education?.length) {
     for (const edu of education) {
-      await prisma.education.create({
-        data: {
-          careerProfileId: profile.id,
-          institution: (edu.institution as string) || 'Unknown',
-          degree: edu.degree as string | undefined,
-          fieldOfStudy: edu.fieldOfStudy as string | undefined,
-          startDate: edu.startDate as string | undefined,
-          endDate: edu.endDate as string | undefined,
-          isCurrent: (edu.isCurrent as boolean) || false,
-          cgpa: edu.cgpa as string | undefined,
-          location: edu.location as string | undefined,
-          sourceResumeIds: [resumeId],
-          verificationStatus: 'EXTRACTED',
-        },
-      }).catch(() => {}) // Skip duplicates
+      const instName = (edu.institution as string) || 'Unknown'
+      const matchKey = instName.substring(0, 10)
+      
+      const existing = await prisma.education.findFirst({
+        where: { careerProfileId: profile.id, institution: { contains: matchKey, mode: 'insensitive' } }
+      })
+
+      if (existing) {
+        if (!existing.sourceResumeIds.includes(resumeId)) {
+          await prisma.education.update({
+            where: { id: existing.id },
+            data: { sourceResumeIds: { push: resumeId } }
+          })
+        }
+      } else {
+        await prisma.education.create({
+          data: {
+            careerProfileId: profile.id,
+            institution: instName,
+            degree: edu.degree as string | undefined,
+            fieldOfStudy: edu.fieldOfStudy as string | undefined,
+            startDate: edu.startDate as string | undefined,
+            endDate: edu.endDate as string | undefined,
+            isCurrent: (edu.isCurrent as boolean) || false,
+            cgpa: edu.cgpa as string | undefined,
+            location: edu.location as string | undefined,
+            sourceResumeIds: [resumeId],
+            verificationStatus: 'EXTRACTED',
+          },
+        })
+      }
     }
   }
 
@@ -92,22 +108,38 @@ export async function applyExtractionToProfile(resumeId: string, userId: string)
   const experience = data.experience as Array<Record<string, unknown>> | undefined
   if (experience?.length) {
     for (const exp of experience) {
-      await prisma.experience.create({
-        data: {
-          careerProfileId: profile.id,
-          company: (exp.company as string) || 'Unknown',
-          jobTitle: (exp.jobTitle as string) || 'Unknown',
-          employmentType: exp.employmentType as string | undefined,
-          startDate: exp.startDate as string | undefined,
-          endDate: exp.endDate as string | undefined,
-          isCurrent: (exp.isCurrent as boolean) || false,
-          location: exp.location as string | undefined,
-          bullets: (exp.bullets as string[]) || [],
-          technologies: (exp.technologies as string[]) || [],
-          sourceResumeIds: [resumeId],
-          verificationStatus: 'EXTRACTED',
-        },
+      const compName = (exp.company as string) || 'Unknown'
+      const matchKey = compName.substring(0, 10)
+      
+      const existing = await prisma.experience.findFirst({
+        where: { careerProfileId: profile.id, company: { contains: matchKey, mode: 'insensitive' } }
       })
+
+      if (existing) {
+        if (!existing.sourceResumeIds.includes(resumeId)) {
+          await prisma.experience.update({
+            where: { id: existing.id },
+            data: { sourceResumeIds: { push: resumeId } }
+          })
+        }
+      } else {
+        await prisma.experience.create({
+          data: {
+            careerProfileId: profile.id,
+            company: compName,
+            jobTitle: (exp.jobTitle as string) || 'Unknown',
+            employmentType: exp.employmentType as string | undefined,
+            startDate: exp.startDate as string | undefined,
+            endDate: exp.endDate as string | undefined,
+            isCurrent: (exp.isCurrent as boolean) || false,
+            location: exp.location as string | undefined,
+            bullets: (exp.bullets as string[]) || [],
+            technologies: (exp.technologies as string[]) || [],
+            sourceResumeIds: [resumeId],
+            verificationStatus: 'EXTRACTED',
+          },
+        })
+      }
     }
   }
 
@@ -115,19 +147,35 @@ export async function applyExtractionToProfile(resumeId: string, userId: string)
   const projects = data.projects as Array<Record<string, unknown>> | undefined
   if (projects?.length) {
     for (const proj of projects) {
-      await prisma.project.create({
-        data: {
-          careerProfileId: profile.id,
-          name: (proj.name as string) || 'Unknown',
-          description: proj.description as string | undefined,
-          technologies: (proj.technologies as string[]) || [],
-          bullets: (proj.bullets as string[]) || [],
-          projectUrl: proj.projectUrl as string | undefined,
-          githubUrl: proj.githubUrl as string | undefined,
-          sourceResumeIds: [resumeId],
-          verificationStatus: 'EXTRACTED',
-        },
+      const projName = (proj.name as string) || 'Unknown'
+      const matchKey = projName.substring(0, 10)
+      
+      const existing = await prisma.project.findFirst({
+        where: { careerProfileId: profile.id, name: { contains: matchKey, mode: 'insensitive' } }
       })
+
+      if (existing) {
+        if (!existing.sourceResumeIds.includes(resumeId)) {
+          await prisma.project.update({
+            where: { id: existing.id },
+            data: { sourceResumeIds: { push: resumeId } }
+          })
+        }
+      } else {
+        await prisma.project.create({
+          data: {
+            careerProfileId: profile.id,
+            name: projName,
+            description: proj.description as string | undefined,
+            technologies: (proj.technologies as string[]) || [],
+            bullets: (proj.bullets as string[]) || [],
+            projectUrl: proj.projectUrl as string | undefined,
+            githubUrl: proj.githubUrl as string | undefined,
+            sourceResumeIds: [resumeId],
+            verificationStatus: 'EXTRACTED',
+          },
+        })
+      }
     }
   }
 }
